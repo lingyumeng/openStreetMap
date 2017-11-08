@@ -12,6 +12,69 @@ problemchars = re.compile(r'[=\+/&<>;\'"\?%#$@\,\. \t\r\n]')
 
 CREATED = ["version", "changeset", "timestamp", "user", "uid"]
 
+def clean_postcode(postcode):
+    code = re.compile(r'^(\d{6}$)')
+    postcode = postcode.rstrip()
+    postcode = postcode.lstrip()
+
+    mpostCode = re.search(postcode)
+    if mpostCode:
+        return postcode.group()
+    else:
+        return None
+
+def clean_province(province):
+    province = province.rstrip()
+    province = province.lstrip()
+    if province == '北京' or province == '河北省':
+        return province
+    else:
+        province = '北京'
+        return province
+
+# 清理非法城市信息
+def clean_city(city):
+    names = ('北京', 'Beijing', '北京市', 'beijing', 'Bejing', '北京Beijing', '北京市 Beijing')
+    re_addr = re.compile(u"(^[\u4e00-\u9fa5]+)市([\u4e00-\u9fa5]+)区")
+
+    city = city.rstrip()
+    city = city.lstrip()
+
+    mapping = dict()
+
+    if city == '涿州市' or city == '大厂回族自治县':
+        mapping['city'] = city
+    elif city in names:
+        mapping['city'] = '北京市'
+    elif city.find("区") > 0 and city.find("北京") == -1:
+        mapping['city'] = '北京市'
+        mapping['districtFromCity'] = city
+    elif  city.find("区") > 0 and city.find("市") > 0:
+        m_addr = re_addr.search(city.decode('utf-8'))
+        if m_addr:
+            mapping['city'] = m_addr.group(1)+'市'
+            mapping['districtFromCity'] = m_addr.group(2)+'区'
+    elif city.find("北京") > 0 and city.find('市') == -1:
+        mapping['city'] = '北京市'
+
+        district = city.replace("北京", '')
+        district = district.replace(',', '')
+        district = district.strip()
+        mapping['districtFromCity'] = district
+    elif city.find('Beijing') > 0 or city.find('beijing') > 0:
+        mapping['city'] = '北京市'
+        district = city.replace("Beijing", '')
+        district = city.replace("beijing", '')
+        district = district.replace(',', '')
+        district = district.lstrip()
+        district = district.rstrip()
+        mapping['districtFromCity'] = district
+    else:
+        mapping['districtFromCity'] = city
+
+    return mapping
+
+
 def shape_element(element):
     node = {}
     if element.tag == "node" or element.tag == "way":
@@ -44,28 +107,48 @@ def shape_element(element):
                 print('ERROR: transfer string to float error')
             node['pos'] = pos
         else:
-            for subelement in element.findall('nd'):
+            for subelement in element.findall('nd'):        #处理nd子标签
                 node_refs.append(subelement.get('ref'))
             node['node_refs'] = node_refs
 
+        # 定义地址字典、地址写入标志、各语言地名字典、地名字典写入标志
         address = dict()
         address_flog = False
         names = dict()
         name_flog = False
 
+        # 处理tag子标签
         for subelement in element.findall('tag'):
-            k = subelement.get('k')
-            mproble = problemchars.search(k)
+            k = subelement.get('k')                                          # 获取tag标签k属性
+            mproble = problemchars.search(k)                                 # 检查k属性是否有问题
             if mproble:
                 continue
             else:
-                mcolon = lower_colon.search(k)
+                mcolon = lower_colon.search(k)                               # 检查k属性是否包含冒号
                 if mcolon:
                     colonList = mcolon.group().split(":")
-                    if colonList[0] == "addr":
+                    if colonList[0] == "addr":                              # 检查是否为地址段标签
                         address_flog = True
-                        addr = colonList[1]
-                        address[addr] = subelement.get('v')
+                        addr = colonList[1]                                  # 获取相关地址信息名称
+                        address[addr] = subelement.get('v')                 # 获取相关地址信息值
+
+                        if addr == 'postcode':                               # 清理非法邮政编码
+                            address[addr] = clean_postcode(address[addr])
+                        elif addr == 'province':                             # 清理非法省份信息
+                            address[addr] = clean_province(address[addr])
+                        elif addr == 'city':                                  # 清理非法城市信息
+                            mapping = clean_city(address[addr])
+                            if mapping['city'] == None:
+                                address[addr] = None
+                                address['districtFromCity'] = mapping['districtFromCity']
+                            else:
+
+                            address[addr] = clean_city(address[addr])
+                        elif addr == 'district':                              # 清理非法区字段信息
+
+
+
+
                     elif colonList[0] == "name":
                         name_flog = True
                         name = colonList[1]
@@ -121,28 +204,6 @@ def test():
                     print("    {0} : {1}, ".format(subkey,subelem))
 
 
-
-    # correct_first_elem = {
-    #     "id": "261114295",
-    #     "visible": "true",
-    #     "type": "node",
-    #     "pos": [41.9730791, -87.6866303],
-    #     "created": {
-    #         "changeset": "11129782",
-    #         "user": "bbmiller",
-    #         "version": "7",
-    #         "uid": "451048",
-    #         "timestamp": "2012-03-28T18:31:23Z"
-    #     }
-    # }
-    #
-    # assert data[0] == correct_first_elem
-    # assert data[-1]["address"] == {
-    #                                 "street": "West Lexington St.",
-    #                                 "housenumber": "1412"
-    #                                   }
-    # assert data[-1]["node_refs"] == [ "2199822281", "2199822390",  "2199822392", "2199822369",
-    #                                 "2199822370", "2199822284", "2199822281"]
 if __name__ == '__main__':
     test()
 
