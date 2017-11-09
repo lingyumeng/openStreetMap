@@ -17,9 +17,9 @@ def clean_postcode(postcode):
     postcode = postcode.rstrip()
     postcode = postcode.lstrip()
 
-    mpostCode = re.search(postcode)
+    mpostCode = code.search(postcode)
     if mpostCode:
-        return postcode.group()
+        return mpostCode.group()
     else:
         return None
 
@@ -46,15 +46,15 @@ def clean_city(city):
         mapping['city'] = city
     elif city in names:
         mapping['city'] = '北京市'
-    elif city.find("区") > 0 and city.find("北京") == -1:
+    elif city.find("区".decode('utf-8')) > 0 and city.find("北京".decode('utf-8')) == -1:
         mapping['city'] = '北京市'
         mapping['districtFromCity'] = city
-    elif  city.find("区") > 0 and city.find("市") > 0:
+    elif  city.find("区".decode('utf-8')) > 0 and city.find("市".decode('utf-8')) > 0:
         m_addr = re_addr.search(city.decode('utf-8'))
         if m_addr:
             mapping['city'] = m_addr.group(1)+'市'
             mapping['districtFromCity'] = m_addr.group(2)+'区'
-    elif city.find("北京") > 0 and city.find('市') == -1:
+    elif city.find("北京".decode('utf-8')) > 0 and city.find('市'.decode('utf-8')) == -1:
         mapping['city'] = '北京市'
 
         district = city.replace("北京", '')
@@ -73,6 +73,42 @@ def clean_city(city):
         mapping['districtFromCity'] = city
 
     return mapping
+
+# 清理区县字段函数
+def clean_district(district):
+    district = district.lstrip()
+    district = district.rstrip()
+    u"(.*?)市([\u4e00-\u9fa5]+)区"
+    cityAnddistrict = re.compile(u"(.*?)市([\u4e00-\u9fa5]+)区")
+
+    map_district = {'Chaoyang': "朝阳区", 'Dongcheng' : "东城区", "密云镇" : "密云区", "回龙观" : "昌平区", "大厂镇" : "大厂回族自治县", "上地南路":"海淀区"}
+
+    if district.find('市'.decode('utf-8')) > 0 and district.find('区'.decode('utf-8')):
+        mcidi = cityAnddistrict.search(district)
+        if mcidi:
+            district = mcidi.group(2)+'区'
+    elif district.find('市'.decode('utf-8')) == -1 and district.find('区'.decode('utf-8')):
+        if district.find("北京") > 0:
+            district = district.replace('北京', '')
+    elif district.find('District') > 0 or district.find('Qu'):
+        district = district.replace('District')
+        district = district.replace('Qu')
+        district = district.strip()
+
+        if map_district.has_key(district):
+            district = map_district[district]
+
+    else:
+        if map_district.has_key(district):
+            district = map_district[district]
+
+    return district
+
+
+
+
+
+
 
 
 def shape_element(element):
@@ -138,13 +174,14 @@ def shape_element(element):
                             address[addr] = clean_province(address[addr])
                         elif addr == 'city':                                  # 清理非法城市信息
                             mapping = clean_city(address[addr])
-                            if mapping['city'] == None:
-                                address[addr] = None
-                                address['districtFromCity'] = mapping['districtFromCity']
-                            else:
+                            if mapping.has_key('city'):
+                                address[addr] = mapping['city']
 
-                            address[addr] = clean_city(address[addr])
+                            if mapping.has_key('districtFromCity'):
+                                address['districtFromCity'] = mapping['districtFromCity']
+
                         elif addr == 'district':                              # 清理非法区字段信息
+                            address[addr] = clean_district(address[addr])
 
 
 
@@ -171,7 +208,7 @@ def shape_element(element):
         return None
 
 def process_map(file_in, pretty = False):
-    file_out = "{0}.json".format(file_in)
+    file_out = "cleaned_{0}.json".format(file_in)
     data = []
     with codecs.open(file_out, "w") as fo:
         for _, element in ET.iterparse(file_in):
