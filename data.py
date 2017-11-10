@@ -26,10 +26,10 @@ def clean_postcode(postcode):
 def clean_province(province):
     province = province.rstrip()
     province = province.lstrip()
-    if province == '北京' or province == '河北省':
+    if province == u'北京' or province == u'河北省':
         return province
     else:
-        province = '北京'
+        province = u'北京'
         return province
 
 # 清理非法城市信息
@@ -42,7 +42,7 @@ def clean_city(city):
 
     mapping = dict()
 
-    if city == '涿州市' or city == '大厂回族自治县':
+    if city == u'涿州市' or city == u'大厂回族自治县':
         mapping['city'] = city
     elif city in names:
         mapping['city'] = '北京市'
@@ -50,14 +50,14 @@ def clean_city(city):
         mapping['city'] = '北京市'
         mapping['districtFromCity'] = city
     elif  city.find("区".decode('utf-8')) > 0 and city.find("市".decode('utf-8')) > 0:
-        m_addr = re_addr.search(city.decode('utf-8'))
+        m_addr = re_addr.search(city)
         if m_addr:
-            mapping['city'] = m_addr.group(1)+'市'
-            mapping['districtFromCity'] = m_addr.group(2)+'区'
+            mapping['city'] = m_addr.group(1)+'市'.decode('utf-8')
+            mapping['districtFromCity'] = m_addr.group(2)+'区'.decode('utf-8')
     elif city.find("北京".decode('utf-8')) > 0 and city.find('市'.decode('utf-8')) == -1:
         mapping['city'] = '北京市'
 
-        district = city.replace("北京", '')
+        district = city.replace(u"北京", '')
         district = district.replace(',', '')
         district = district.strip()
         mapping['districtFromCity'] = district
@@ -88,11 +88,11 @@ def clean_district(district):
         if mcidi:
             district = mcidi.group(2)+'区'
     elif district.find('市'.decode('utf-8')) == -1 and district.find('区'.decode('utf-8')):
-        if district.find("北京") > 0:
+        if district.find("北京".decode('utf-8')) > 0:
             district = district.replace('北京', '')
     elif district.find('District') > 0 or district.find('Qu'):
-        district = district.replace('District')
-        district = district.replace('Qu')
+        district = district.replace('District', '')
+        district = district.replace('Qu', '')
         district = district.strip()
 
         if map_district.has_key(district):
@@ -103,13 +103,6 @@ def clean_district(district):
             district = map_district[district]
 
     return district
-
-
-
-
-
-
-
 
 def shape_element(element):
     node = {}
