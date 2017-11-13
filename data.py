@@ -34,7 +34,7 @@ def clean_province(province):
 
 # 清理非法城市信息
 def clean_city(city):
-    names = ('北京', 'Beijing', '北京市', 'beijing', 'Bejing', '北京Beijing', '北京市 Beijing')
+    names = (u'北京', u'Beijing', u'北京市', u'beijing', u'Bejing', u'北京Beijing', u'北京市 Beijing')
     re_addr = re.compile(u"(^[\u4e00-\u9fa5]+)市([\u4e00-\u9fa5]+)区")
 
     city = city.rstrip()
@@ -46,19 +46,22 @@ def clean_city(city):
         mapping['city'] = city
     elif city in names:
         mapping['city'] = '北京市'
-    elif city.find("区".decode('utf-8')) > 0 and city.find("北京".decode('utf-8')) == -1:
-        mapping['city'] = '北京市'
-        mapping['districtFromCity'] = city
-    elif  city.find("区".decode('utf-8')) > 0 and city.find("市".decode('utf-8')) > 0:
+    elif  city.find(u"区") > 0 and city.find(u"市") > 0:
         m_addr = re_addr.search(city)
         if m_addr:
-            mapping['city'] = m_addr.group(1)+'市'.decode('utf-8')
-            mapping['districtFromCity'] = m_addr.group(2)+'区'.decode('utf-8')
-    elif city.find("北京".decode('utf-8')) > 0 and city.find('市'.decode('utf-8')) == -1:
+            mapping['city'] = m_addr.group(1)+u'市'
+            mapping['districtFromCity'] = m_addr.group(2)+u'区'
+    elif city.find(u"区") > 0 or city.find(u"市") > 0:
         mapping['city'] = '北京市'
 
-        district = city.replace(u"北京", '')
-        district = district.replace(',', '')
+        district = city.decode('utf-8').replace(u'北京市', '')
+        district = district.replace(u'北京', '')
+        district = district.strip()
+        mapping['districtFromCity'] = district
+    elif city.find(u"北京") > 0:
+        mapping['city'] = '北京市'
+        district = city.decode('utf-8')
+        district = district.replace(u"北京", '')
         district = district.strip()
         mapping['districtFromCity'] = district
     elif city.find('Beijing') > 0 or city.find('beijing') > 0:
@@ -66,10 +69,10 @@ def clean_city(city):
         district = city.replace("Beijing", '')
         district = city.replace("beijing", '')
         district = district.replace(',', '')
-        district = district.lstrip()
-        district = district.rstrip()
+        district = district.strip()
         mapping['districtFromCity'] = district
     else:
+        mapping['city'] = "北京市"
         mapping['districtFromCity'] = city
 
     return mapping
@@ -78,18 +81,17 @@ def clean_city(city):
 def clean_district(district):
     district = district.lstrip()
     district = district.rstrip()
-    u"(.*?)市([\u4e00-\u9fa5]+)区"
     cityAnddistrict = re.compile(u"(.*?)市([\u4e00-\u9fa5]+)区")
 
-    map_district = {'Chaoyang': "朝阳区", 'Dongcheng' : "东城区", "密云镇" : "密云区", "回龙观" : "昌平区", "大厂镇" : "大厂回族自治县", "上地南路":"海淀区"}
+    map_district = {'Chaoyang': u"朝阳区", 'Dongcheng' : u"东城区", u"密云镇" : u"密云区", u"回龙观" : u"昌平区", u"大厂镇" : u"大厂回族自治县", u"上地南路":u"海淀区"}
 
-    if district.find('市'.decode('utf-8')) > 0 and district.find('区'.decode('utf-8')):
+    if district.find(u'市') > 0 and district.find(u'区'):
         mcidi = cityAnddistrict.search(district)
         if mcidi:
-            district = mcidi.group(2)+'区'
-    elif district.find('市'.decode('utf-8')) == -1 and district.find('区'.decode('utf-8')):
-        if district.find("北京".decode('utf-8')) > 0:
-            district = district.replace('北京', '')
+            district = mcidi.group(2)+u'区'
+    elif district.find(u'市') == -1 and district.find(u'区'):
+        if district.find(u"北京") > 0:
+            district = district.replace(u'北京', '')
     elif district.find('District') > 0 or district.find('Qu'):
         district = district.replace('District', '')
         district = district.replace('Qu', '')
@@ -97,7 +99,6 @@ def clean_district(district):
 
         if map_district.has_key(district):
             district = map_district[district]
-
     else:
         if map_district.has_key(district):
             district = map_district[district]
@@ -175,9 +176,6 @@ def shape_element(element):
 
                         elif addr == 'district':                              # 清理非法区字段信息
                             address[addr] = clean_district(address[addr])
-
-
-
 
                     elif colonList[0] == "name":
                         name_flog = True
