@@ -46,25 +46,25 @@ def clean_city(city):
         mapping['city'] = city
     elif city in names:
         mapping['city'] = '北京市'
-    elif  city.find(u"区") > 0 and city.find(u"市") > 0:
+    elif  city.find(u"区") >= 0 and city.find(u"市") >= 0:
         m_addr = re_addr.search(city)
         if m_addr:
             mapping['city'] = m_addr.group(1)+u'市'
             mapping['districtFromCity'] = m_addr.group(2)+u'区'
-    elif city.find(u"区") > 0 or city.find(u"市") > 0:
+    elif city.find(u"区") >= 0 or city.find(u"市") >= 0:
         mapping['city'] = '北京市'
 
-        district = city.decode('utf-8').replace(u'北京市', '')
+        district = city.replace(u'北京市', '')
         district = district.replace(u'北京', '')
         district = district.strip()
         mapping['districtFromCity'] = district
-    elif city.find(u"北京") > 0:
+    elif city.find(u"北京") >= 0:
         mapping['city'] = '北京市'
-        district = city.decode('utf-8')
-        district = district.replace(u"北京", '')
-        district = district.strip()
+
+        city = city.replace(u"北京", '')
+        district = city.strip()
         mapping['districtFromCity'] = district
-    elif city.find('Beijing') > 0 or city.find('beijing') > 0:
+    elif city.find('Beijing') >= 0 or city.find('beijing') >= 0:
         mapping['city'] = '北京市'
         district = city.replace("Beijing", '')
         district = city.replace("beijing", '')
@@ -74,36 +74,34 @@ def clean_city(city):
     else:
         mapping['city'] = "北京市"
         mapping['districtFromCity'] = city
-
     return mapping
 
-# 清理区县字段函数
-def clean_district(district):
-    district = district.lstrip()
-    district = district.rstrip()
-    cityAnddistrict = re.compile(u"(.*?)市([\u4e00-\u9fa5]+)区")
 
+# 清理区县字段函数
+def clean_district(address):
+    district = address.strip()
+    cityAnddistrict = re.compile(u"(.*?)市([\u4e00-\u9fa5]+)区")
     map_district = {'Chaoyang': u"朝阳区", 'Dongcheng' : u"东城区", u"密云镇" : u"密云区", u"回龙观" : u"昌平区", u"大厂镇" : u"大厂回族自治县", u"上地南路":u"海淀区"}
 
-    if district.find(u'市') > 0 and district.find(u'区'):
+    if district.find(u'市') >= 0 and district.find(u'区') >= 0:
         mcidi = cityAnddistrict.search(district)
         if mcidi:
             district = mcidi.group(2)+u'区'
-    elif district.find(u'市') == -1 and district.find(u'区'):
-        if district.find(u"北京") > 0:
+    elif district.find(u'市') == -1 and district.find(u'区') >= 0:
+        if district.find(u"北京") >= 0:
             district = district.replace(u'北京', '')
-    elif district.find('District') > 0 or district.find('Qu'):
+            district = district.strip()
+    elif district.find('District') >= 0 or district.find('Qu') >= 0:
         district = district.replace('District', '')
         district = district.replace('Qu', '')
         district = district.strip()
-
         if map_district.has_key(district):
             district = map_district[district]
     else:
         if map_district.has_key(district):
             district = map_district[district]
-
     return district
+
 
 def shape_element(element):
     node = {}
