@@ -97,9 +97,11 @@ def clean_district(address):
         district = district.strip()
         if map_district.has_key(district):
             district = map_district[district]
+    elif map_district.has_key(district):
+        district = map_district[district]
     else:
-        if map_district.has_key(district):
-            district = map_district[district]
+        district = None
+
     return district
 
 
